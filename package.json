@@ -1,0 +1,15 @@
+{
+  "name": "anchor",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Anchor — an accountability agent that knows your real goals",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  }
+}

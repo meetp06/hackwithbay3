@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta name="description" content="Anchor — an accountability agent that knows your real goals, catches you reaching for social media, and negotiates with you in context." />
+  <title>Anchor — Accountability Agent</title>
+
+  <!-- Preconnect for Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Inline critical styles to prevent FOUC -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #0a0e1a;
+      color: #f1f5f9;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #app {
+      min-height: 100vh;
+    }
+    /* Initial loading state */
+    .app-loader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 1.5rem;
+    }
+    .app-loader .anchor-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      animation: pulse-loader 1.5s ease-in-out infinite;
+    }
+    .app-loader .loader-text {
+      font-size: 0.875rem;
+      color: #64748b;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    @keyframes pulse-loader {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.08); opacity: 0.7; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Loading state shown before JS mounts -->
+    <div class="app-loader" id="initial-loader">
+      <div class="anchor-icon">⚓</div>
+      <div class="loader-text">Loading Anchor…</div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
