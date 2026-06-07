@@ -1,36 +1,25 @@
 /* ============================================================
    ANCHOR — Intervention Screen
-   THE STAR OF THE DEMO: Agent debate with typewriter effect
+   THE STAR OF THE DEMO: Agent debate with realtime & edge fn
    ============================================================ */
 
+import { insforge, syncStateFromInsForge } from '../insforge.js';
 import {
   getWatchedApps,
   getTodayUsage,
   isOverLimit,
-  addIntervention,
-  addStakeTransaction,
-  addMemory,
   getGoalProgress,
   getStakeBalance,
   getStakeCurrency,
+  getTodayGoals,
 } from '../state.js';
 
-import {
-  generateIntervention,
-  generateTempterResponse,
-} from '../agent/brain.js';
+function escapeHtml(s = '') {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
 // ---- Typewriter Effect ----
-
-/**
- * Types text character-by-character into an element.
- * Returns a promise that resolves when typing is complete.
- * @param {HTMLElement} el  - Target element
- * @param {string} text     - Text to type
- * @param {number} speed    - Milliseconds per character
- * @returns {Promise<void>}
- */
-function typewrite(el, text, speed = 30) {
+function typewrite(el, text, speed = 25) {
   return new Promise((resolve) => {
     el.textContent = '';
     const cursor = document.createElement('span');
@@ -41,13 +30,11 @@ function typewrite(el, text, speed = 30) {
     let i = 0;
     function tick() {
       if (i < text.length) {
-        // Insert character before cursor
         const charNode = document.createTextNode(text[i]);
         el.insertBefore(charNode, cursor);
         i++;
         setTimeout(tick, speed);
       } else {
-        // Remove cursor after a brief pause
         setTimeout(() => {
           if (cursor.parentNode) cursor.remove();
           resolve();
@@ -58,10 +45,6 @@ function typewrite(el, text, speed = 30) {
   });
 }
 
-/**
- * Render the intervention screen into the given container.
- * @param {HTMLElement} container
- */
 export function render(container) {
   const apps = getWatchedApps();
   const app = apps[0] || { appName: 'Instagram', icon: '📸', dailyMinutesLimit: 5, dailyOpenLimit: 3 };
@@ -72,160 +55,253 @@ export function render(container) {
   const screen = document.createElement('div');
   screen.className = 'intervention-overlay';
 
+  const todayGoals = getTodayGoals();
+  const openGoals = todayGoals.filter((g) => g.status !== 'done');
+
   screen.innerHTML = `
-    <!-- Usage Context Bar -->
-    <div class="usage-bar mb-4">
-      <span class="usage-icon">${app.icon}</span>
-      <span class="usage-stat">${app.appName}: ${usage.totalMinutes}min / ${app.dailyMinutesLimit}min</span>
-      <span class="usage-divider">·</span>
-      <span class="usage-stat">${usage.opens} of ${app.dailyOpenLimit} opens</span>
-      ${overLimitInfo.isOver ? '<span class="badge badge-danger" style="margin-left:auto;">⚠️ Over Limit</span>' : ''}
-    </div>
+    <button class="intervention-close" id="intervention-close-btn" aria-label="Close">×</button>
 
-    <!-- Agent Debate Area -->
-    <div class="flex flex-col gap-4 mb-6" id="intervention-debate">
-      <!-- Tempter Card -->
-      <div class="agent-card agent-card-tempter">
-        <div class="agent-label">😈 TEMPTER</div>
-        <div class="agent-message" id="intervention-tempter-msg">
-          <span class="text-muted">...</span>
-        </div>
+    <div class="intervention-inner">
+      <!-- Usage Context Bar -->
+      <div class="usage-bar mb-3">
+        <span class="app-icon-chip" data-app="${escapeHtml(app.appName)}">${escapeHtml(app.icon)}</span>
+        <span class="usage-stat">${escapeHtml(app.appName)}: ${usage.totalMinutes}/${app.dailyMinutesLimit} min</span>
+        <span class="usage-divider">·</span>
+        <span class="usage-stat">${usage.opens}/${app.dailyOpenLimit} opens</span>
+        ${overLimitInfo.isOver ? '<span class="badge badge-danger" style="margin-left:auto;">Over Limit</span>' : ''}
       </div>
 
-      <!-- Coach Card -->
-      <div class="agent-card agent-card-coach">
-        <div class="agent-label">🛡️ ANCHOR</div>
+      <!-- Mainframe Coach card -->
+      <div class="agent-card agent-card-coach mb-3">
+        <div class="agent-label">MAINFRAME</div>
         <div class="agent-message" id="intervention-coach-msg">
-          <span class="text-muted">Anchor is thinking...</span>
+          <span class="text-muted">Reading your goals…</span>
         </div>
       </div>
-    </div>
 
-    <!-- Action Buttons (hidden until messages are typed) -->
-    <div class="action-buttons hidden" id="intervention-actions">
-      <button class="action-btn action-btn-recommended" id="intervention-action-task">
-        <span class="action-icon">🎯</span>
-        <span class="action-text">
-          <span class="action-label">Open my real task</span>
-          <span class="action-desc">Get back to what matters</span>
-        </span>
-      </button>
+      <!-- Your Goals Today -->
+      <div class="iv-section mb-3">
+        <div class="iv-section-title">Your goals today</div>
+        ${openGoals.length === 0 ? `
+          <div class="iv-empty">All goals done. Nice.</div>
+        ` : openGoals.map((g) => `
+          <div class="iv-goal-row">
+            <span class="iv-goal-dot"></span>
+            <span class="iv-goal-text">${escapeHtml(g.text)}</span>
+          </div>
+        `).join('')}
+      </div>
 
-      <button class="action-btn" id="intervention-action-break">
-        <span class="action-icon">⏸️</span>
-        <span class="action-text">
-          <span class="action-label">Take a 2-min break</span>
-          <span class="action-desc">Logged and timed</span>
-        </span>
-      </button>
+      <!-- AI Roadmap (generated) -->
+      <div class="iv-section mb-3" id="iv-roadmap-section">
+        <div class="iv-section-title">Mainframe roadmap</div>
+        <div class="iv-roadmap" id="iv-roadmap-body">
+          <div class="iv-empty">Generating your next 3 steps…</div>
+        </div>
+      </div>
 
-      <button class="action-btn action-btn-danger" id="intervention-action-proceed">
-        <span class="action-icon">⚠️</span>
-        <span class="action-text">
-          <span class="action-label">Proceed anyway</span>
-          <span class="action-desc">Your stake may be affected</span>
-        </span>
-      </button>
-    </div>
+      <!-- Action buttons -->
+      <div class="action-buttons hidden" id="intervention-actions">
+        <button class="action-btn action-btn-recommended" id="intervention-action-task">
+          <span class="action-icon-text">Open</span>
+          <span class="action-text">
+            <span class="action-label">Open my real task</span>
+            <span class="action-desc">Back to what matters</span>
+          </span>
+        </button>
 
-    <!-- Break Timer (hidden initially) -->
-    <div class="break-timer hidden" id="intervention-break-timer">
-      <div class="timer-display" id="break-timer-display">2:00</div>
-      <div class="timer-label">Break in progress — breathe 🌿</div>
+        <button class="action-btn" id="intervention-action-break">
+          <span class="action-icon-text">Pause</span>
+          <span class="action-text">
+            <span class="action-label">Take a 2-min break</span>
+            <span class="action-desc">Logged and timed</span>
+          </span>
+        </button>
+
+        <button class="action-btn action-btn-danger" id="intervention-action-proceed">
+          <span class="action-icon-text">Risk</span>
+          <span class="action-text">
+            <span class="action-label">Proceed anyway</span>
+            <span class="action-desc">Your stake may be affected</span>
+          </span>
+        </button>
+      </div>
+
+      <div class="break-timer hidden" id="intervention-break-timer">
+        <div class="timer-display" id="break-timer-display">2:00</div>
+        <div class="timer-label">Break in progress — breathe</div>
+      </div>
     </div>
   `;
 
   container.appendChild(screen);
 
+  // Close button → back to dashboard
+  screen.querySelector('#intervention-close-btn').addEventListener('click', () => {
+    try { insforge.realtime.disconnect(); } catch (e) { /* ignore */ }
+    window.navigateTo('dashboard');
+  });
+
   // ---- DOM refs ----
-  const tempterMsgEl = screen.querySelector('#intervention-tempter-msg');
   const coachMsgEl = screen.querySelector('#intervention-coach-msg');
+  const roadmapBodyEl = screen.querySelector('#iv-roadmap-body');
   const actionsEl = screen.querySelector('#intervention-actions');
   const breakTimerEl = screen.querySelector('#intervention-break-timer');
   const breakTimerDisplay = screen.querySelector('#break-timer-display');
 
-  // ---- Fire the agent calls ----
-  runIntervention();
-
-  // Store suggested stake from the coach for the proceed handler
   let suggestedStakeFromAgent = 10;
+  let currentInterventionId = null;
+  let currentUser = null;
 
-  async function runIntervention() {
-    let tempterText = '';
-    let coachText = '';
+  // ---- Setup Realtime and Trigger Edge Function ----
+  setupInterventionFlow();
 
-    const fallbackTempter = "Come on, just a quick scroll won't hurt. You've been working hard — you deserve a little break. It's only Instagram...";
-    const fallbackCoach = `You have ${progress.total - progress.done} goals still pending. Last time you said "just a minute" it turned into 18. Your future self is counting on you right now.`;
+  async function setupInterventionFlow() {
+    try {
+      const { data: { user } } = await insforge.auth.getCurrentUser();
+      if (!user) {
+        coachMsgEl.textContent = "Error: Not authenticated";
+        return;
+      }
+      currentUser = user;
+
+      // 1. Connect to Realtime & Subscribe
+      const channelName = `interventions:${user.id}`;
+      coachMsgEl.textContent = "Connecting to agent...";
+
+      await insforge.realtime.connect();
+      await insforge.realtime.subscribe(channelName);
+      console.log(`[Realtime] Subscribed to ${channelName}`);
+
+      // 2. Listener for realtime message
+      insforge.realtime.on("new_intervention", async (payload) => {
+        console.log("[Realtime] Received new intervention broadcast:", payload);
+        suggestedStakeFromAgent = payload.suggested_stake || 10;
+        currentInterventionId = payload.id;
+        await typewrite(coachMsgEl, payload.agent_message, 20);
+        setTimeout(() => actionsEl.classList.remove('hidden'), 200);
+      });
+
+      // 3. Generate the AI roadmap (in parallel)
+      generateRoadmap(openGoals);
+
+      // 4. Trigger backend Edge Function for Coach message
+      coachMsgEl.textContent = "Mainframe is reading your goals...";
+      await insforge.functions.invoke("intervene", {
+        body: {
+          user_id: user.id,
+          app_name: app.appName,
+          usage_today: { opens: usage.opens, totalMinutes: usage.totalMinutes }
+        }
+      });
+    } catch (err) {
+      console.error("Intervention flow failed, using scripted fallback:", err);
+      await typewrite(coachMsgEl, `You have goals pending today. Let's redirect that energy.`, 20);
+      actionsEl.classList.remove('hidden');
+      generateRoadmap(openGoals);
+    }
+  }
+
+  async function generateRoadmap(goals) {
+    // Always render fallback first so something's visible.
+    const fallback = buildFallbackRoadmap(goals);
+    renderRoadmap(fallback);
+
+    if (goals.length === 0) return;
 
     try {
-      // Run both agent calls in parallel
-      const [tempterResult, coachResult] = await Promise.all([
-        generateTempterResponse(app.appName),
-        generateIntervention(app.appName),
-      ]);
-
-      // Extract .message from response objects
-      tempterText = (tempterResult && tempterResult.message) ? tempterResult.message : fallbackTempter;
-      coachText = (coachResult && coachResult.message) ? coachResult.message : fallbackCoach;
-
-      // Capture suggested stake from coach
-      if (coachResult && typeof coachResult.suggested_stake === 'number') {
-        suggestedStakeFromAgent = coachResult.suggested_stake;
+      const systemPrompt = `You are Mainframe's planner. Generate exactly 3 concise next steps the user should take RIGHT NOW instead of scrolling. Each step ≤ 12 words. Reference at least one of their goals.
+Respond ONLY with valid JSON: {"steps":[{"label":"...", "minutes":<int>}, ...]}.
+No prose, no fences.`;
+      const userPrompt = `Goals pending today:\n${goals.map((g, i) => `${i + 1}. ${g.text}`).join('\n')}\nGenerate 3 ordered concrete next steps.`;
+      const response = await insforge.ai.chat.completions.create({
+        model: "anthropic/claude-3.5-haiku",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.6,
+      });
+      const raw = response.choices[0].message.content.trim().replace(/^```json/, '').replace(/```$/, '').trim();
+      const parsed = JSON.parse(raw);
+      if (parsed.steps && Array.isArray(parsed.steps) && parsed.steps.length > 0) {
+        renderRoadmap(parsed.steps.slice(0, 3));
       }
-    } catch (err) {
-      console.error('Agent generation failed, using fallbacks:', err);
-      tempterText = fallbackTempter;
-      coachText = fallbackCoach;
+    } catch (e) {
+      console.warn('[Mainframe Roadmap] LLM generation failed, kept fallback', e);
     }
+  }
 
-    // Typewrite tempter message first
-    await typewrite(tempterMsgEl, tempterText, 25);
+  function buildFallbackRoadmap(goals) {
+    if (goals.length === 0) {
+      return [
+        { label: 'Stand up. 60s deep breath.', minutes: 1 },
+        { label: 'Drink a glass of water.', minutes: 1 },
+        { label: 'Pick a small win for the next hour.', minutes: 5 },
+      ];
+    }
+    const first = goals[0].text;
+    return [
+      { label: `Open the doc/app for "${first}".`, minutes: 2 },
+      { label: `Spend 10 focused minutes on it. No tabs.`, minutes: 10 },
+      { label: `Mark one sub-step done before checking phone again.`, minutes: 1 },
+    ];
+  }
 
-    // Then coach message
-    await typewrite(coachMsgEl, coachText, 25);
-
-    // Show action buttons with a slight delay
-    setTimeout(() => {
-      actionsEl.classList.remove('hidden');
-    }, 300);
+  function renderRoadmap(steps) {
+    roadmapBodyEl.innerHTML = steps.map((s, i) => `
+      <div class="iv-step">
+        <span class="iv-step-num">${i + 1}</span>
+        <span class="iv-step-label">${escapeHtml(s.label)}</span>
+        <span class="iv-step-time">${s.minutes ? `${s.minutes}m` : ''}</span>
+      </div>
+    `).join('');
   }
 
   // ---- Action Handlers ----
 
   // 🎯 Open my real task
-  screen.querySelector('#intervention-action-task').addEventListener('click', () => {
-    addIntervention({
-      appName: app.appName,
-      userAction: 'open_task',
-      goalsAtTime: progress,
-    });
+  screen.querySelector('#intervention-action-task').addEventListener('click', async () => {
+    const btn = screen.querySelector('#intervention-action-task');
+    btn.disabled = true;
+    const taskLabel = btn.querySelector('.action-label');
+    if (taskLabel) taskLabel.textContent = 'Redirecting...';
 
-    addMemory(
-      `Chose to open real task instead of ${app.appName}. Had ${progress.done}/${progress.total} goals done.`,
-      { app: app.appName, action: 'open_task', date: new Date().toISOString() }
-    );
+    if (currentUser && currentInterventionId) {
+      await insforge.functions.invoke("decide_consequence", {
+        body: {
+          user_id: currentUser.id,
+          intervention_id: currentInterventionId,
+          user_action: 'open_task',
+        }
+      });
+    }
 
-    // Show brief success indicator then navigate
-    showToast(screen, '🎯 Great choice! Back to your tasks.');
+    await syncStateFromInsForge();
+    showToast(screen, 'Great choice — back to your tasks.');
     setTimeout(() => {
       window.navigateTo('dashboard');
     }, 1200);
   });
 
   // ⏸️ Take a 2-min break
-  screen.querySelector('#intervention-action-break').addEventListener('click', () => {
-    addIntervention({
-      appName: app.appName,
-      userAction: 'break',
-      goalsAtTime: progress,
-    });
+  screen.querySelector('#intervention-action-break').addEventListener('click', async () => {
+    if (currentUser && currentInterventionId) {
+      await insforge.functions.invoke("decide_consequence", {
+        body: {
+          user_id: currentUser.id,
+          intervention_id: currentInterventionId,
+          user_action: 'break',
+        }
+      });
+    }
 
-    // Hide actions, show timer
     actionsEl.classList.add('hidden');
     breakTimerEl.classList.remove('hidden');
 
-    startBreakTimer(120, breakTimerDisplay, () => {
-      showToast(screen, '⏸️ Break over! Let\'s refocus.');
+    startBreakTimer(120, breakTimerDisplay, async () => {
+      await syncStateFromInsForge();
+      showToast(screen, 'Break over — let\'s refocus.');
       setTimeout(() => {
         window.navigateTo('dashboard');
       }, 1200);
@@ -233,40 +309,41 @@ export function render(container) {
   });
 
   // ⚠️ Proceed anyway
-  screen.querySelector('#intervention-action-proceed').addEventListener('click', () => {
+  screen.querySelector('#intervention-action-proceed').addEventListener('click', async () => {
+    const excuse = prompt("What's your excuse for scrolling anyway?") || "Just a quick scroll";
     const over = isOverLimit(app.appName);
-    const currency = getStakeCurrency();
 
-    addIntervention({
-      appName: app.appName,
-      userAction: 'proceed',
-      overLimit: over.isOver,
-      goalsAtTime: progress,
-    });
+    const btn = screen.querySelector('#intervention-action-proceed');
+    btn.disabled = true;
+    const proceedLabel = btn.querySelector('.action-label');
+    if (proceedLabel) proceedLabel.textContent = 'Logging...';
 
-    addMemory(
-      `Chose to proceed to ${app.appName} despite intervention. ${over.isOver ? 'Was over limit.' : 'Was within limit.'} Had ${progress.done}/${progress.total} goals done.`,
-      { app: app.appName, action: 'proceed', overLimit: over.isOver, date: new Date().toISOString() }
-    );
+    if (currentUser && currentInterventionId) {
+      await insforge.functions.invoke("decide_consequence", {
+        body: {
+          user_id: currentUser.id,
+          intervention_id: currentInterventionId,
+          user_action: 'proceed',
+          excuse: excuse,
+          app_name: app.appName,
+          was_over_limit: over.isOver,
+          suggested_stake: suggestedStakeFromAgent,
+        }
+      });
+    }
+
+    await syncStateFromInsForge();
 
     if (over.isOver) {
-      // Stake consequence
-      const suggestedStake = suggestedStakeFromAgent;
-
-      addStakeTransaction({
-        amount: suggestedStake,
-        destination: 'reinvest:DSA Course',
-        reason: 'Over-limit Instagram usage',
-      });
-
-      // Show consequence animation
+      const currency = getStakeCurrency();
       actionsEl.classList.add('hidden');
+      
       const consequenceEl = document.createElement('div');
       consequenceEl.className = 'glass-card-elevated flex flex-col items-center gap-4 mt-4';
       consequenceEl.innerHTML = `
-        <span class="emoji-xl">💸</span>
+        <div class="consequence-mark">−</div>
         <p class="text-danger font-bold text-lg">Stake Deducted</p>
-        <p class="text-2xl font-bold balance-flash">-${currency}${suggestedStake}</p>
+        <p class="text-2xl font-bold balance-flash">−${currency}${suggestedStakeFromAgent}</p>
         <p class="text-secondary text-sm">Redirected to: DSA Course</p>
         <p class="text-muted text-xs">Remaining balance: ${currency}${getStakeBalance()}</p>
       `;
@@ -276,38 +353,31 @@ export function render(container) {
         window.navigateTo('dashboard');
       }, 2500);
     } else {
-      // Not over limit — just record and navigate
-      showToast(screen, '⚠️ Usage logged. Stay mindful!');
+      showToast(screen, 'Usage logged — stay mindful.');
       setTimeout(() => {
         window.navigateTo('dashboard');
       }, 1200);
     }
   });
+
+  // Clean up socket listener when unmounting
+  return () => {
+    insforge.realtime.disconnect();
+  };
 }
 
-// ---- Break Timer ----
-
-/**
- * Starts a countdown timer.
- * @param {number} totalSeconds
- * @param {HTMLElement} displayEl
- * @param {Function} onComplete
- */
 function startBreakTimer(totalSeconds, displayEl, onComplete) {
   let remaining = totalSeconds;
-
   function updateDisplay() {
     const min = Math.floor(remaining / 60);
     const sec = remaining % 60;
     displayEl.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
   }
-
   updateDisplay();
 
   const interval = setInterval(() => {
     remaining--;
     updateDisplay();
-
     if (remaining <= 0) {
       clearInterval(interval);
       onComplete();
@@ -315,13 +385,6 @@ function startBreakTimer(totalSeconds, displayEl, onComplete) {
   }, 1000);
 }
 
-// ---- Toast ----
-
-/**
- * Shows a brief toast notification.
- * @param {HTMLElement} parent
- * @param {string} message
- */
 function showToast(parent, message) {
   const toast = document.createElement('div');
   toast.className = 'glass-card-solid flex items-center gap-2';

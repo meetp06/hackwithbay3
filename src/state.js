@@ -54,13 +54,14 @@ function createDefaultState() {
     ],
 
     watchedApps: [
-      {
-        id: 'app_1',
-        appName: 'Instagram',
-        icon: '📸',
-        dailyMinutesLimit: 5,
-        dailyOpenLimit: 3,
-      },
+      { id: 'app_1', appName: 'Instagram', icon: 'IG', dailyMinutesLimit: 5,  dailyOpenLimit: 3 },
+      { id: 'app_2', appName: 'LinkedIn',  icon: 'IN', dailyMinutesLimit: 10, dailyOpenLimit: 4 },
+      { id: 'app_3', appName: 'Facebook',  icon: 'FB', dailyMinutesLimit: 5,  dailyOpenLimit: 3 },
+      { id: 'app_4', appName: 'WhatsApp',  icon: 'WA', dailyMinutesLimit: 15, dailyOpenLimit: 6 },
+      { id: 'app_5', appName: 'X',         icon: 'X',  dailyMinutesLimit: 8,  dailyOpenLimit: 4 },
+      { id: 'app_6', appName: 'TikTok',    icon: 'TT', dailyMinutesLimit: 5,  dailyOpenLimit: 2 },
+      { id: 'app_7', appName: 'YouTube',   icon: 'YT', dailyMinutesLimit: 20, dailyOpenLimit: 3 },
+      { id: 'app_8', appName: 'Snapchat',  icon: 'SC', dailyMinutesLimit: 5,  dailyOpenLimit: 3 },
     ],
 
     usageEvents: [],
@@ -68,9 +69,34 @@ function createDefaultState() {
     interventions: [],
 
     stakeLedger: {
-      balance: 100,
-      currency: '₹',
-      transactions: [],
+      balance: 70,
+      currency: '$',
+      transactions: [
+        {
+          id: 'tx_seed_1',
+          amount: 10,
+          destination: 'DSA Course',
+          reason: 'Opened Instagram while over daily limit',
+          isTest: true,
+          createdAt: getRelativeDate(-1),
+        },
+        {
+          id: 'tx_seed_2',
+          amount: 5,
+          destination: 'Gym membership',
+          reason: 'Opened YouTube while over daily limit',
+          isTest: true,
+          createdAt: getRelativeDate(-3),
+        },
+        {
+          id: 'tx_seed_3',
+          amount: 15,
+          destination: 'DSA Course',
+          reason: 'Opened TikTok while over daily limit',
+          isTest: true,
+          createdAt: getRelativeDate(-5),
+        }
+      ],
     },
 
     // Pre-seeded memories for demo impact
@@ -212,13 +238,30 @@ export function setGoals(goals) {
   setState('goals', goals);
 }
 
-export function toggleGoal(goalId) {
+export async function toggleGoal(goalId) {
   const s = getState();
   const goal = s.goals.find((g) => g.id === goalId);
   if (goal) {
-    goal.status = goal.status === 'done' ? 'open' : 'done';
+    const newStatus = goal.status === 'done' ? 'open' : 'done';
+    
+    // Update local state immediately for UI responsiveness
+    goal.status = newStatus;
     saveState();
     notify('goals', s.goals);
+
+    // Sync to Postgres
+    try {
+      const { insforge } = await import("./insforge.js");
+      const { data: { user } } = await insforge.auth.getCurrentUser();
+      if (user) {
+        await insforge.database
+          .from("goals")
+          .update({ status: newStatus })
+          .eq("id", goalId);
+      }
+    } catch (err) {
+      console.warn("Failed to sync goal toggle to Postgres:", err);
+    }
   }
 }
 
@@ -241,18 +284,46 @@ export function setWatchedApps(apps) {
 
 // ---------- Usage Events ----------
 
-export function addUsageEvent(event) {
+export async function addUsageEvent(event) {
   const s = getState();
+  const appName = event.appName || 'Instagram';
+  const limitInfo = isOverLimit(appName);
+  const overLimit = limitInfo.isOver;
+
   const newEvent = {
     id: `usage_${Date.now()}`,
     openedAt: new Date().toISOString(),
     durationSec: 0,
-    overLimit: false,
+    overLimit: overLimit,
     ...event,
   };
   s.usageEvents.push(newEvent);
   saveState();
   notify('usageEvents', s.usageEvents);
+
+  // Sync to Postgres
+  try {
+    const { insforge } = await import("./insforge.js");
+    const { data: { user } } = await insforge.auth.getCurrentUser();
+    if (user) {
+      const { data: inserted } = await insforge.database
+        .from("usage_events")
+        .insert([{
+          user_id: user.id,
+          app_name: appName,
+          opened_at: newEvent.openedAt,
+          duration_sec: 0,
+          over_limit: overLimit,
+        }])
+        .select();
+      if (inserted?.[0]) {
+        newEvent.id = inserted[0].id;
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to sync usage event to Postgres:", err);
+  }
+
   return newEvent;
 }
 
@@ -269,7 +340,7 @@ export function updateUsageEvent(eventId, updates) {
 export function getTodayUsage(appName) {
   const today = new Date().toISOString().split('T')[0];
   const events = getState().usageEvents.filter(
-    (e) => e.appName === appName && e.openedAt.startsWith(today)
+    (e) => e.appName === appName && typeof e.openedAt === 'string' && e.openedAt.startsWith(today)
   );
   const totalSeconds = events.reduce((sum, e) => sum + (e.durationSec || 0), 0);
   return {
@@ -308,7 +379,7 @@ export function addIntervention(intervention) {
 
 export function getTodayInterventions() {
   const today = new Date().toISOString().split('T')[0];
-  return getState().interventions.filter((i) => i.createdAt.startsWith(today));
+  return getState().interventions.filter((i) => typeof i.createdAt === 'string' && i.createdAt.startsWith(today));
 }
 
 // ---------- Stake Ledger ----------
@@ -321,7 +392,7 @@ export function getStakeCurrency() {
   return getState().stakeLedger.currency;
 }
 
-export function addStakeTransaction(tx) {
+export async function addStakeTransaction(tx) {
   const s = getState();
   const transaction = {
     id: `tx_${Date.now()}`,
@@ -333,6 +404,26 @@ export function addStakeTransaction(tx) {
   s.stakeLedger.balance = Math.max(0, s.stakeLedger.balance - transaction.amount);
   saveState();
   notify('stakeLedger', s.stakeLedger);
+
+  // Sync to Postgres
+  try {
+    const { insforge } = await import("./insforge.js");
+    const { data: { user } } = await insforge.auth.getCurrentUser();
+    if (user) {
+      await insforge.database
+        .from("stake_ledger")
+        .insert([{
+          user_id: user.id,
+          amount: transaction.amount,
+          destination: transaction.destination.replace('reinvest:', '').replace('replan:', ''),
+          reason: transaction.reason,
+          is_test: true,
+        }]);
+    }
+  } catch (err) {
+    console.warn("Failed to sync stake transaction to Postgres:", err);
+  }
+
   return transaction;
 }
 
@@ -349,7 +440,7 @@ export function setStakeBalance(balance) {
 
 // ---------- Memories ----------
 
-export function addMemory(text, metadata = {}) {
+export async function addMemory(text, metadata = {}) {
   const s = getState();
   const memory = {
     id: `mem_${Date.now()}`,
@@ -360,6 +451,33 @@ export function addMemory(text, metadata = {}) {
   s.memories.push(memory);
   saveState();
   notify('memories', s.memories);
+
+  // Sync to Postgres pgvector
+  try {
+    const { insforge } = await import("./insforge.js");
+    const { data: { user } } = await insforge.auth.getCurrentUser();
+    if (user) {
+      console.log("[State Memory] Generating embedding for memory:", text);
+      const embeddingResponse = await insforge.ai.embeddings.create({
+        model: "openai/text-embedding-3-small",
+        input: text,
+      });
+      const embedding = embeddingResponse.data[0].embedding;
+
+      await insforge.database
+        .from("memories")
+        .insert([{
+          user_id: user.id,
+          content: text,
+          embedding: embedding,
+          metadata: metadata,
+        }]);
+      console.log("[State Memory] Successfully saved memory to Postgres.");
+    }
+  } catch (err) {
+    console.warn("Failed to sync memory to Postgres pgvector:", err);
+  }
+
   return memory;
 }
 

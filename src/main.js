@@ -13,6 +13,7 @@ const screens = {
   intervention: () => import('./screens/intervention.js'),
   ledger: () => import('./screens/ledger.js'),
   replan: () => import('./screens/replan.js'),
+  sponsors: () => import('./screens/sponsors.js'),
 };
 
 let currentScreen = null;
@@ -26,7 +27,7 @@ function getRoute() {
 }
 
 async function navigate(route) {
-  const app = document.getElementById('app');
+  const app = document.getElementById('anchor-app');
   if (!app) return;
 
   // Cleanup previous screen
@@ -36,14 +37,21 @@ async function navigate(route) {
   }
 
   // Determine route
+  const state = getState();
+  const isLoggedIn = state.user && state.user.id && state.user.onboarded;
+  
   if (!route) {
-    const state = getState();
-    route = state.user.onboarded ? 'dashboard' : 'onboarding';
+    route = isLoggedIn ? 'dashboard' : 'onboarding';
+  }
+
+  // Route guard: force onboarding if not logged in
+  if (!isLoggedIn && route !== 'onboarding') {
+    route = 'onboarding';
   }
 
   // Validate route
   if (!screens[route]) {
-    route = 'dashboard';
+    route = isLoggedIn ? 'dashboard' : 'onboarding';
   }
 
   // Update hash without triggering re-navigation
@@ -91,36 +99,54 @@ async function navigate(route) {
   }
 }
 
+// expose so dashboard can deep-link
+window.routes = window.routes || {};
+
 // ---------- Navigation Bar ----------
+
+const NAV_GLYPHS = {
+  home:     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+  ledger:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>',
+  replan:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>',
+  sponsors: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>',
+  settings: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.55V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1.03H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1.03-1.55V3a2 2 0 0 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.16.46.62.94 1.55 1.03H21a2 2 0 0 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1.03Z"/></svg>',
+};
+
+function navGlyph(name) {
+  return NAV_GLYPHS[name] || '';
+}
 
 function renderNavBar(app, activeRoute) {
   // Remove existing nav
   const existingNav = document.querySelector('.nav-bar');
   if (existingNav) existingNav.remove();
 
+  // Anchor nav inside the phone container (sibling of scroll container)
+  const phoneContainer = app.parentElement || app;
+
   const nav = document.createElement('nav');
   nav.className = 'nav-bar';
   nav.setAttribute('aria-label', 'Main navigation');
   nav.innerHTML = `
     <button class="nav-item ${activeRoute === 'dashboard' ? 'active' : ''}" data-route="dashboard" id="nav-dashboard">
-      <span class="nav-icon">📊</span>
-      <span>Dashboard</span>
+      <span class="nav-icon">${navGlyph('home')}</span>
+      <span>Home</span>
     </button>
     <button class="nav-item ${activeRoute === 'ledger' ? 'active' : ''}" data-route="ledger" id="nav-ledger">
-      <span class="nav-icon">💰</span>
+      <span class="nav-icon">${navGlyph('ledger')}</span>
       <span>Ledger</span>
     </button>
     <button class="nav-item ${activeRoute === 'replan' ? 'active' : ''}" data-route="replan" id="nav-replan">
-      <span class="nav-icon">🔄</span>
+      <span class="nav-icon">${navGlyph('replan')}</span>
       <span>Re-plan</span>
     </button>
     <button class="nav-item" id="nav-settings">
-      <span class="nav-icon">⚙️</span>
+      <span class="nav-icon">${navGlyph('settings')}</span>
       <span>Settings</span>
     </button>
   `;
 
-  app.appendChild(nav);
+  phoneContainer.appendChild(nav);
 
   // Nav event listeners
   nav.querySelectorAll('.nav-item[data-route]').forEach((btn) => {
@@ -147,10 +173,10 @@ function showSettingsModal() {
 
   const modal = document.createElement('div');
   modal.id = 'settings-modal';
-  modal.className = 'modal-backdrop';
+  modal.className = 'modal-backdrop modal-backdrop-phone';
   modal.innerHTML = `
     <div class="modal-card">
-      <h2 class="heading text-xl mb-6">⚙️ Settings</h2>
+      <h2 class="heading text-xl mb-6">Settings</h2>
       
       <div class="input-group mb-4">
         <label class="input-label" for="settings-api-key">Gemini API Key</label>
@@ -175,7 +201,10 @@ function showSettingsModal() {
     </div>
   `;
 
-  document.body.appendChild(modal);
+  // Append inside phone container, not document.body
+  const anchorApp = document.getElementById('anchor-app');
+  const phoneContainer = anchorApp ? (anchorApp.parentElement || document.body) : document.body;
+  phoneContainer.appendChild(modal);
 
   // Close on backdrop click
   modal.addEventListener('click', (e) => {
@@ -216,11 +245,11 @@ function showApiKeyPrompt() {
   modal.innerHTML = `
     <div class="modal-card">
       <div class="flex flex-col flex-center gap-4 mb-6">
-        <div class="emoji-xl">⚓</div>
-        <h2 class="heading text-xl">Power Up Anchor</h2>
+        <div class="hero-mark">A</div>
+        <h2 class="heading text-xl">Power Up Mainframe</h2>
         <p class="text-secondary text-sm" style="text-align: center; line-height: 1.6;">
-          Add a Gemini API key to enable the AI agent brain. 
-          Without it, Anchor uses pre-scripted responses.
+          Add a Gemini API key to enable the AI agent brain.
+          Without it, Mainframe uses pre-scripted responses.
         </p>
       </div>
       
@@ -267,26 +296,36 @@ window.navigateTo = function (route) {
 
 // ---------- Init ----------
 
-function init() {
-  // Initialize state
+async function init() {
+  // Initialize local state store
   initializeStore();
-
-  // Remove initial loader
-  const loader = document.getElementById('initial-loader');
-  if (loader) loader.remove();
 
   // Listen for hash changes
   window.addEventListener('hashchange', () => {
     navigate(getRoute());
   });
 
-  // Check for API key on first visit
-  const state = getState();
-  if (!hasApiKey() && !state.user.onboarded) {
-    showApiKeyPrompt();
-  } else {
-    navigate(getRoute());
+  // Check if authenticated in InsForge
+  try {
+    const { insforge, syncStateFromInsForge } = await import("./insforge.js");
+    const { data: { user } } = await insforge.auth.getCurrentUser();
+    
+    if (user) {
+      console.log("[Main Init] Found active user session, syncing state...");
+      await syncStateFromInsForge();
+    } else {
+      console.log("[Main Init] No active session, redirecting to onboarding.");
+      window.location.hash = "onboarding";
+    }
+  } catch (err) {
+    console.warn("Failed to check authentication on init:", err);
   }
+
+  // Remove initial loader
+  const loader = document.getElementById('initial-loader');
+  if (loader) loader.remove();
+
+  navigate(getRoute());
 }
 
 // Start the app

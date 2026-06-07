@@ -304,3 +304,91 @@ function buildFallbackContext(appName) {
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
+
+/**
+ * Generates a visual connected roadmap of the user's goals.
+ * @param {Array} goals - List of goals
+ * @returns {Promise<{steps: Array}>}
+ */
+export async function generateGoalRoadmap(goals) {
+  const fallback = buildFallbackGoalRoadmap(goals);
+
+  try {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      console.warn('[Anchor Brain] No API key for goal roadmap — using fallback');
+      return { steps: fallback };
+    }
+
+    const systemPrompt = `You are Mainframe's visual task planner. Take the user's current goals and organize them into exactly 3 sequential, connected steps or phases for their daily roadmap.
+If they have fewer or more than 3 goals, consolidate or break them down into exactly 3 meaningful checkpoints.
+For each step, generate:
+1. label: Name of step (max 20 chars)
+2. desc: Brief description/why it is structured here (max 12 words)
+3. phase: High level phase title (e.g. "Phase 1: Setup")
+4. emoji: Relevant emoji
+5. status: "open" or "done" (match their current goal status if applicable)
+
+Respond ONLY with valid JSON: {"steps":[{"id": "1", "label":"...", "desc":"...", "phase":"...", "emoji":"...", "status":"open"}]}.
+Do NOT include markdown fences, preamble, or any text outside of the JSON object.`;
+
+    const userMessage = `Current goals:\n${goals.map((g, i) => `${i + 1}. ${g.text} (${g.status})`).join('\n')}\nGenerate the 3-step visual journey.`;
+
+    const result = await callGeminiAPI(systemPrompt, userMessage);
+
+    if (result && result.steps && Array.isArray(result.steps) && result.steps.length > 0) {
+      // Preserve original goal reference ids if possible to allow click interactions
+      const mappedSteps = result.steps.slice(0, 3).map((step, idx) => {
+        const matchingGoal = goals[idx];
+        return {
+          ...step,
+          id: matchingGoal ? matchingGoal.id : (step.id || `gen_${idx}`),
+          status: matchingGoal ? matchingGoal.status : (step.status || 'open'),
+        };
+      });
+      return { steps: mappedSteps };
+    }
+
+    return { steps: fallback };
+  } catch (err) {
+    console.error('[Anchor Brain] Goal roadmap generation failed:', err);
+    return { steps: fallback };
+  }
+}
+
+function buildFallbackGoalRoadmap(goals) {
+  if (!goals || goals.length === 0) {
+    return [
+      { id: '1', label: 'Breathe & Focus', desc: 'Center yourself before launching any apps.', phase: 'Phase 1: Prep', emoji: '🧘', status: 'open' },
+      { id: '2', label: 'Define One Goal', desc: 'Write down a clear task for the hour.', phase: 'Phase 2: Define', emoji: '📝', status: 'open' },
+      { id: '3', label: 'Take Action', desc: 'Work for 25 mins without checking notifications.', phase: 'Phase 3: Work', emoji: '⚡', status: 'open' },
+    ];
+  }
+
+  const steps = [];
+  const count = goals.length;
+
+  for (let i = 0; i < 3; i++) {
+    if (i < count) {
+      const g = goals[i];
+      steps.push({
+        id: g.id || `fallback_${i}`,
+        label: g.text.length > 20 ? g.text.slice(0, 17) + '...' : g.text,
+        desc: `Work on achieving: ${g.text}`,
+        phase: `Phase ${i + 1}: ${g.status === 'done' ? 'Completed' : 'Focus'}`,
+        emoji: g.status === 'done' ? '✅' : '🎯',
+        status: g.status,
+      });
+    } else {
+      steps.push({
+        id: `pad_${i}`,
+        label: 'Mindful Review',
+        desc: 'Review goals accomplished and recalibrate.',
+        phase: `Phase ${i + 1}: Review`,
+        emoji: '🔄',
+        status: 'open',
+      });
+    }
+  }
+  return steps;
+}
