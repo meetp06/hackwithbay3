@@ -68,6 +68,7 @@ export function render(container) {
           const isFailed = day.proceeded > 0 || day.minutesUsed > app.dailyMinutesLimit;
           const statusLabel = isFailed ? 'FAIL' : 'OK';
           const badgeClass = isFailed ? 'badge-danger' : 'badge-success';
+          const barColor = isFailed ? 'var(--color-danger)' : 'var(--color-primary)';
           return `
             <div class="flex flex-col items-center" style="flex:1;">
               <span class="text-xs text-muted mb-1">${day.minutesUsed}m</span>
