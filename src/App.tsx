@@ -80,14 +80,7 @@ export default function App() {
 
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 sm:px-12 py-6 sm:py-8">
-        <div className="flex items-center gap-3 mt-3 ml-4">
-          <span className="text-[23px] sm:text-[28px] font-heading tracking-tight text-white select-none font-light">
-            Mainframe®
-          </span>
-          <span className="text-[25px] sm:text-[32px] text-white select-none leading-none -ml-1">
-            ✳︎
-          </span>
-        </div>
+        <div className="w-[120px] hidden md:block" /> {/* Left Spacer to center links */}
  
         {/* Desktop Links */}
         <div className="hidden md:flex items-center text-[23px] text-white/90">
@@ -184,6 +177,16 @@ export default function App() {
           </p>
         </aside>
       </main>
+
+      {/* Brand Logo - relocated to bottom side */}
+      <div className="fixed bottom-8 left-8 sm:left-12 z-50 flex items-center gap-2 select-none" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+        <span className="text-[22px] sm:text-[26px] tracking-tight text-white/80 select-none font-extralight uppercase">
+          Mainframe®
+        </span>
+        <span className="text-[24px] sm:text-[30px] text-white/40 select-none leading-none -ml-1">
+          ✳︎
+        </span>
+      </div>
     </div>
   );
 }
