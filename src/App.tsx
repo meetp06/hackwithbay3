@@ -102,10 +102,10 @@ export default function App() {
       </nav>
  
       {/* Main: phone + side product copy */}
-      <main className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-16 h-screen w-full px-8 sm:px-16 lg:px-24 max-w-[1700px] mx-auto">
+      <main className="relative z-10 grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-10 lg:gap-16 h-screen w-full px-8 sm:px-16 lg:px-24 max-w-[1700px] mx-auto">
  
         {/* LEFT Copy — motto */}
-        <aside className="hidden lg:flex flex-col flex-1 max-w-[500px] text-white tracking-tight self-stretch justify-center pb-8" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
+        <aside className="hidden lg:flex flex-col flex-1 max-w-[500px] text-white tracking-tight self-stretch justify-center pb-8 justify-self-start" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
           <span className="text-[12px] uppercase tracking-[0.4em] text-indigo-400 font-semibold mb-6">
             Intelligent Focus
           </span>
@@ -122,7 +122,7 @@ export default function App() {
         {/* PHONE */}
         <div
           id="app-phone-wrapper"
-          className="flex justify-center items-center shrink-0"
+          className="flex justify-center items-center shrink-0 justify-self-center"
           style={{ width: 'min(320px, calc(82vh * 320 / 696))' }}
         >
           {!phoneVisible ? (
@@ -163,7 +163,7 @@ export default function App() {
         </div>
  
         {/* RIGHT Copy — motto continued */}
-        <aside className="hidden lg:flex flex-col flex-1 max-w-[500px] text-white tracking-tight self-stretch justify-center pb-8" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
+        <aside className="hidden lg:flex flex-col flex-1 max-w-[500px] text-white tracking-tight self-stretch justify-center pb-8 justify-self-end" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
           <span className="text-[12px] uppercase tracking-[0.4em] text-fuchsia-400 font-semibold mb-6 text-right">
             Skin in the Game
           </span>
