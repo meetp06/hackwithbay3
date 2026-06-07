@@ -79,16 +79,16 @@ export default function App() {
       <div className="fixed inset-0 bg-black/30 z-0 pointer-events-none" />
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-5 sm:px-8 py-4 sm:py-5">
-        <div className="flex items-center gap-3">
-          <span className="text-[21px] sm:text-[26px] font-heading tracking-tight text-white select-none">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-8 sm:px-12 py-6 sm:py-8">
+        <div className="flex items-center gap-3 mt-3 ml-4">
+          <span className="text-[23px] sm:text-[28px] font-heading tracking-tight text-white select-none font-light">
             Mainframe®
           </span>
-          <span className="text-[25px] sm:text-[30px] text-white select-none leading-none -ml-1">
+          <span className="text-[25px] sm:text-[32px] text-white select-none leading-none -ml-1">
             ✳︎
           </span>
         </div>
-
+ 
         {/* Desktop Links */}
         <div className="hidden md:flex items-center text-[23px] text-white/90">
           <a href="#labs" className="hover:opacity-60 transition-opacity">Labs</a>
@@ -99,7 +99,7 @@ export default function App() {
           <span className="mx-1 select-none">, </span>
           <a href="#shop" className="hover:opacity-60 transition-opacity">Shop</a>
         </div>
-
+ 
         {/* Desktop CTA */}
         <div className="hidden md:block">
           <a href="mailto:hello@mainframe.co" className="text-[23px] text-white underline underline-offset-4 hover:opacity-60 transition-opacity">
@@ -107,25 +107,25 @@ export default function App() {
           </a>
         </div>
       </nav>
-
+ 
       {/* Main: phone + side product copy */}
-      <main className="relative z-10 flex flex-col lg:flex-row items-center justify-center gap-10 lg:gap-16 h-screen w-full px-6 sm:px-12 lg:px-20 max-w-[1500px] mx-auto">
-
+      <main className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-16 h-screen w-full px-8 sm:px-16 lg:px-24 max-w-[1700px] mx-auto">
+ 
         {/* LEFT Copy — motto */}
-        <aside className="hidden lg:flex flex-col flex-1 max-w-[480px] text-white tracking-tight self-stretch justify-end pb-8" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
-          <span className="text-[11px] uppercase tracking-[0.32em] text-white/50 font-medium mb-8">
-            Our Motto
+        <aside className="hidden lg:flex flex-col flex-1 max-w-[500px] text-white tracking-tight self-stretch justify-center pb-8" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
+          <span className="text-[12px] uppercase tracking-[0.4em] text-indigo-400 font-semibold mb-6">
+            Intelligent Focus
           </span>
-          <h1 className="text-[72px] xl:text-[88px] leading-[0.92] font-light text-white mb-10 tracking-[-0.04em]">
-            Attention<br/>
-            <span className="italic font-extralight text-white/70">is the new</span><br/>
-            <span className="bg-gradient-to-r from-white via-white to-white/40 bg-clip-text text-transparent font-medium">currency.</span>
+          <h1 className="text-[76px] xl:text-[92px] leading-[0.9] font-extralight text-white mb-8 tracking-[-0.05em] uppercase">
+            Focus is<br/>
+            <span className="font-thin text-white/40">the new</span><br/>
+            <span className="font-medium bg-gradient-to-r from-indigo-400 via-fuchsia-500 to-indigo-300 bg-clip-text text-transparent">freedom.</span>
           </h1>
-          <p className="text-[19px] xl:text-[22px] leading-[1.5] text-white/70 font-light max-w-[420px]">
-            We built Anchor because every minute spent doomscrolling is a minute stolen from the life you actually want.
+          <p className="text-[20px] xl:text-[23px] leading-[1.6] text-white/60 font-light max-w-[440px]">
+            Every minute saved from scrolling is a minute reclaimed to build the future you actually want.
           </p>
         </aside>
-
+ 
         {/* PHONE */}
         <div
           id="app-phone-wrapper"
@@ -159,28 +159,28 @@ export default function App() {
                   <span>🔋</span>
                 </div>
               </div>
-
+ 
               {/* Dynamic Island — above status bar bg */}
               <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-50" />
-
+ 
               {/* SPA Screen container (mounted by main.js) */}
               <div id="anchor-app" className="flex-1 overflow-y-auto bg-[#fdfbf7] min-h-0" style={{ paddingTop: '52px' }} />
             </div>
           )}
         </div>
-
+ 
         {/* RIGHT Copy — motto continued */}
-        <aside className="hidden lg:flex flex-col flex-1 max-w-[480px] text-white tracking-tight self-stretch justify-end pb-8" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
-          <span className="text-[11px] uppercase tracking-[0.32em] text-white/50 font-medium mb-8">
-            The Promise
+        <aside className="hidden lg:flex flex-col flex-1 max-w-[500px] text-white tracking-tight self-stretch justify-center pb-8" style={{ fontFamily: "'Space Grotesk', 'Inter', sans-serif" }}>
+          <span className="text-[12px] uppercase tracking-[0.4em] text-fuchsia-400 font-semibold mb-6 text-right">
+            Skin in the Game
           </span>
-          <h2 className="text-[72px] xl:text-[88px] leading-[0.92] font-light text-white mb-10 tracking-[-0.04em] text-right">
-            Spend it<br/>
-            <span className="italic font-extralight text-white/70">on what</span><br/>
-            <span className="bg-gradient-to-r from-white/40 via-white to-white bg-clip-text text-transparent font-medium">matters.</span>
+          <h2 className="text-[76px] xl:text-[92px] leading-[0.9] font-extralight text-white mb-8 tracking-[-0.05em] text-right uppercase">
+            Stake it<br/>
+            <span className="font-thin text-white/40">on what</span><br/>
+            <span className="font-medium bg-gradient-to-r from-fuchsia-400 via-indigo-500 to-fuchsia-300 bg-clip-text text-transparent">matters.</span>
           </h2>
-          <p className="text-[19px] xl:text-[22px] leading-[1.5] text-white/70 font-light max-w-[420px] ml-auto text-right">
-            Anchor doesn't block — it negotiates. A live AI agent, your real goals, and skin in the game.
+          <p className="text-[20px] xl:text-[23px] leading-[1.6] text-white/60 font-light max-w-[440px] ml-auto text-right">
+            Anchor negotiates your distraction. A live AI agent, your real goals, and stakes that back your success.
           </p>
         </aside>
       </main>
